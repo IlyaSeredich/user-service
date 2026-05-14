@@ -30,6 +30,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                     unique: true
+                    uniqueConstraintName: uk_email_users
               - column:
                   name: active
                   type: boolean
@@ -45,3 +46,9 @@ databaseChangeLog:
                   type: timestamp
                   constraints:
                     nullable: false
+        - createIndex:
+            indexName: idx_users_created_at
+            tableName: users
+            columns:
+              - column:
+                  name: created_at
