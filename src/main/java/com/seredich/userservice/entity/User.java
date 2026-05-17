@@ -27,7 +27,7 @@ public class User {
     private String email;
     private Boolean active;
 
-    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<PaymentCard> paymentCards;
 
     @CreatedDate
