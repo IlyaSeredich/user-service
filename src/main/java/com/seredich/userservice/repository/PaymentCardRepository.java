@@ -2,20 +2,22 @@ package com.seredich.userservice.repository;
 
 import com.seredich.userservice.entity.PaymentCard;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
-public interface PaymentCardRepository extends JpaRepository<PaymentCard, Long> {
-    PaymentCard save(PaymentCard paymentCard);
-
+@Repository
+public interface PaymentCardRepository extends JpaRepository<PaymentCard, Long>, JpaSpecificationExecutor<PaymentCard> {
     @Query(value = """
             SELECT * FROM payment_cards
             WHERE id = :id
             """, nativeQuery = true)
-    PaymentCard getPaymentCardById(@Param("id") Long id);
+    Optional<PaymentCard> findPaymentCardById(@Param("id") Long id);
 
     @Query("SELECT pc FROM PaymentCard pc WHERE pc.user.id = :userId")
-    List<PaymentCard> getAllByUserId(@Param("userId") Long userId);
+    List<PaymentCard> findAllByUserId(@Param("userId") Long userId);
 }
