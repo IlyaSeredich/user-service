@@ -25,6 +25,10 @@ public class PaymentCard {
     private String expirationDate;
     private Boolean active;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+
     @CreatedDate
     @Column(name = "created_at")
     private LocalDateTime createdAt;

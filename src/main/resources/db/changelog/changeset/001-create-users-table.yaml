@@ -47,8 +47,14 @@ databaseChangeLog:
                   constraints:
                     nullable: false
         - createIndex:
-            indexName: idx_users_created_at
+            indexName: idx_users_name
             tableName: users
             columns:
               - column:
-                  name: created_at
+                  name: name
+        - createIndex:
+            indexName: idx_users_surname
+            tableName: users
+            columns:
+              - column:
+                  name: surname

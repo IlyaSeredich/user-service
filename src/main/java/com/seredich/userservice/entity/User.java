@@ -27,8 +27,7 @@ public class User {
     private String email;
     private Boolean active;
 
-    @OneToMany
-    @JoinColumn(name = "user_id")
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private List<PaymentCard> paymentCards;
 
     @CreatedDate
