@@ -2,7 +2,6 @@ package com.seredich.userservice.service.impl;
 
 import com.seredich.userservice.dto.*;
 import com.seredich.userservice.entity.PaymentCard;
-import com.seredich.userservice.entity.User;
 import com.seredich.userservice.mapper.PaymentCardMapper;
 import com.seredich.userservice.repository.PaymentCardRepository;
 import com.seredich.userservice.service.PaymentCardService;
@@ -60,19 +59,24 @@ public class PaymentCardServiceImpl implements PaymentCardService {
     public PaymentCardResponseDto updatePaymentCard(Long id, PaymentCardUpdateDto paymentCardUpdateDto) {
         PaymentCard paymentCard = getPaymentCardEntity(id);
         paymentCardMapper.updatePaymentCard(paymentCardUpdateDto, paymentCard);
+        paymentCardRepository.save(paymentCard);
         return paymentCardMapper.toDto(paymentCard);
     }
 
     @Override
     @Transactional
     public void activatePaymentCard(Long id) {
-        getPaymentCardEntity(id).setActive(true);
+        PaymentCard paymentCard = getPaymentCardEntity(id);
+        paymentCard.setActive(true);
+        paymentCardRepository.save(paymentCard);
     }
 
     @Override
     @Transactional
     public void deactivatePaymentCard(Long id) {
-        getPaymentCardEntity(id).setActive(false);
+        PaymentCard paymentCard = getPaymentCardEntity(id);
+        paymentCard.setActive(false);
+        paymentCardRepository.save(paymentCard);
     }
 
     private PaymentCard getPaymentCardEntity(Long id) {

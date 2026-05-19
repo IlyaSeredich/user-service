@@ -50,6 +50,7 @@ public class UserServiceImpl implements UserService {
     public UserResponseDto updateUser(Long id, UserUpdateDto userUpdateDto) {
         User user = getUserEntity(id);
         userMapper.updateUser(userUpdateDto, user);
+        userRepository.save(user);
         return userMapper.toDto(user);
     }
 
@@ -58,6 +59,7 @@ public class UserServiceImpl implements UserService {
     public void activateUser(Long id) {
         User user = getUserEntity(id);
         user.setActive(true);
+        userRepository.save(user);
     }
 
     @Override
@@ -65,6 +67,7 @@ public class UserServiceImpl implements UserService {
     public void deactivateUser(Long id) {
         User user = getUserEntity(id);
         user.setActive(false);
+        userRepository.save(user);
     }
 
     @Override
