@@ -7,6 +7,7 @@ public record UserResponseDto(
         String name,
         String surname,
         LocalDate birthdate,
-        String email
+        String email,
+        Boolean active
 ) {
 }

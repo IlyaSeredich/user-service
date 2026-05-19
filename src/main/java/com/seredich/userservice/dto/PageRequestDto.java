@@ -1,12 +1,12 @@
 package com.seredich.userservice.dto;
 
-public record PageUserRequestDto(
+public record PageRequestDto(
         Integer pageNumber,
         Integer pageSize,
         String sortField,
         String sortDirection
 ) {
-    public PageUserRequestDto {
+    public PageRequestDto {
         if (pageNumber == null || pageNumber < 0) pageNumber = 0;
         if (pageSize == null || pageSize <= 0) pageSize = 10;
         if (sortField == null || sortField.isBlank()) sortField = "createdAt";

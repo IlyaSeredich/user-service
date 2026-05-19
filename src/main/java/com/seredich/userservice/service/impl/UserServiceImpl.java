@@ -38,11 +38,11 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public PageUserResponseDto searchUsers(SearchUserDto searchUserDto, PageUserRequestDto pageUserRequestDto) {
-        Pageable pageable = createPageable(pageUserRequestDto);
+    public PageUserResponseDto searchUsers(SearchUserDto searchUserDto, PageRequestDto pageRequestDto) {
+        Pageable pageable = createPageable(pageRequestDto);
         Specification<User> specification = UserSpecification.build(searchUserDto);
         Page<User> searchedUsers = userRepository.findAll(specification, pageable);
-        return createPageTasksDto(searchedUsers);
+        return createPageUserResponseDto(searchedUsers);
     }
 
     @Override
@@ -54,28 +54,36 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public void activateUser(Long id) {
         User user = getUserEntity(id);
         user.setActive(true);
     }
 
     @Override
+    @Transactional
     public void deactivateUser(Long id) {
         User user = getUserEntity(id);
         user.setActive(false);
     }
 
-    private Pageable createPageable(PageUserRequestDto pageUserRequestDto) {
+    @Override
+    public boolean canAddPaymentCard(Long userId) {
+        User user = getUserEntity(userId);
+        return user.getPaymentCards().size() < 5;
+    }
+
+    private Pageable createPageable(PageRequestDto pageRequestDto) {
         return PageRequest.of(
-                pageUserRequestDto.pageNumber(),
-                pageUserRequestDto.pageSize(),
+                pageRequestDto.pageNumber(),
+                pageRequestDto.pageSize(),
                 Sort.by(
-                        Sort.Direction.fromString(pageUserRequestDto.sortDirection()),
-                        pageUserRequestDto.sortField()
+                        Sort.Direction.fromString(pageRequestDto.sortDirection()),
+                        pageRequestDto.sortField()
                 ));
     }
 
-    private PageUserResponseDto createPageTasksDto(Page<User> searchedUsers) {
+    private PageUserResponseDto createPageUserResponseDto(Page<User> searchedUsers) {
         return new PageUserResponseDto(
                 searchedUsers.getContent().stream().map(userMapper::toDto).toList(),
                 searchedUsers.getPageable().getPageNumber(),
