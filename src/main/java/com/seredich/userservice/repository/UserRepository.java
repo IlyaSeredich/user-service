@@ -18,6 +18,5 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
             """, nativeQuery = true)
     Optional<User> findUserById(@Param("id") Long id);
 
-    @Query("SELECT u FROM User u")
-    List<User> findAllUsers();
+    boolean existsUserByEmail(String email);
 }

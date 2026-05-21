@@ -6,8 +6,9 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import java.util.Optional;
+
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PaymentCardRepository extends JpaRepository<PaymentCard, Long>, JpaSpecificationExecutor<PaymentCard> {
@@ -19,4 +20,8 @@ public interface PaymentCardRepository extends JpaRepository<PaymentCard, Long>,
 
     @Query("SELECT pc FROM PaymentCard pc WHERE pc.user.id = :userId")
     List<PaymentCard> findAllByUserId(@Param("userId") Long userId);
+
+    boolean existsByNumber(String number);
+
+    long countPaymentCardByUserId(Long userId);
 }

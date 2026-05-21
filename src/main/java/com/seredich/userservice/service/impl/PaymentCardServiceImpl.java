@@ -2,6 +2,8 @@ package com.seredich.userservice.service.impl;
 
 import com.seredich.userservice.dto.*;
 import com.seredich.userservice.entity.PaymentCard;
+import com.seredich.userservice.entity.User;
+import com.seredich.userservice.exception.*;
 import com.seredich.userservice.mapper.PaymentCardMapper;
 import com.seredich.userservice.repository.PaymentCardRepository;
 import com.seredich.userservice.service.PaymentCardService;
@@ -15,25 +17,23 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @AllArgsConstructor
 public class PaymentCardServiceImpl implements PaymentCardService {
     private final PaymentCardRepository paymentCardRepository;
-    private final UserService userService;
     private final PaymentCardMapper paymentCardMapper;
+    private final UserService userService;
 
     @Override
     @Transactional
     public PaymentCardResponseDto createPaymentCard(PaymentCardCreateDto createDto) {
-        if(userService.canAddPaymentCard(createDto.userId())) {
-            PaymentCard paymentCard = paymentCardMapper.toPaymentCard(createDto);
-            PaymentCard savedPaymentCard = paymentCardRepository.save(paymentCard);
-            return paymentCardMapper.toDto(savedPaymentCard);
-        } else {
-            return null;
-        }
+        validateCreatingConditions(createDto.userId(), createDto.number());
+        User user = userService.getUserEntity(createDto.userId());
+        PaymentCard paymentCard = paymentCardMapper.toPaymentCard(createDto, user);
+        paymentCard.setActive(true);
+        PaymentCard savedPaymentCard = paymentCardRepository.save(paymentCard);
+        return paymentCardMapper.toDto(savedPaymentCard);
     }
 
     @Override
@@ -57,6 +57,7 @@ public class PaymentCardServiceImpl implements PaymentCardService {
     @Override
     @Transactional
     public PaymentCardResponseDto updatePaymentCard(Long id, PaymentCardUpdateDto paymentCardUpdateDto) {
+        validateNumberNotExists(paymentCardUpdateDto.number());
         PaymentCard paymentCard = getPaymentCardEntity(id);
         paymentCardMapper.updatePaymentCard(paymentCardUpdateDto, paymentCard);
         paymentCardRepository.save(paymentCard);
@@ -67,6 +68,7 @@ public class PaymentCardServiceImpl implements PaymentCardService {
     @Transactional
     public void activatePaymentCard(Long id) {
         PaymentCard paymentCard = getPaymentCardEntity(id);
+        if(paymentCard.getActive()) throw new PaymentCardAlreadyActiveException();
         paymentCard.setActive(true);
         paymentCardRepository.save(paymentCard);
     }
@@ -75,13 +77,13 @@ public class PaymentCardServiceImpl implements PaymentCardService {
     @Transactional
     public void deactivatePaymentCard(Long id) {
         PaymentCard paymentCard = getPaymentCardEntity(id);
+        if(!paymentCard.getActive()) throw new PaymentCardAlreadyNonActiveException();
         paymentCard.setActive(false);
         paymentCardRepository.save(paymentCard);
     }
 
     private PaymentCard getPaymentCardEntity(Long id) {
-        Optional<PaymentCard> paymentCard = paymentCardRepository.findPaymentCardById(id);
-        return paymentCard.get();
+        return paymentCardRepository.findPaymentCardById(id).orElseThrow(() -> new CardNotFoundException(id));
     }
 
     private Pageable createPageable(PageRequestDto pageRequestDto) {
@@ -104,4 +106,19 @@ public class PaymentCardServiceImpl implements PaymentCardService {
         );
     }
 
+    private void validateCreatingConditions(Long userId, String number) {
+        validatePaymentCardLimit(userId);
+        validateNumberNotExists(number);
+    }
+
+    private void validatePaymentCardLimit(Long userId) {
+        long count = paymentCardRepository.countPaymentCardByUserId(userId);
+        if (count >= 5) throw new CardLimitExceededException();
+    }
+
+    private void validateNumberNotExists(String number) {
+        if (paymentCardRepository.existsByNumber(number)) {
+            throw new CardNumberAlreadyExistException(number);
+        }
+    }
 }

@@ -6,7 +6,7 @@ public record UserResponseDto(
         Long id,
         String name,
         String surname,
-        LocalDate birthdate,
+        LocalDate birthDate,
         String email,
         Boolean active
 ) {

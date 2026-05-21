@@ -10,7 +10,7 @@ public record UserUpdateDto(
         @Size(min = 3, max = 50, message = "Surname must be between 3 and 50 characters long")
         String surname,
         @Past(message = "Birthdate must be in the past")
-        LocalDate birthdate,
+        LocalDate birthDate,
         @Size(min = 6, max = 100, message = "Email must be between 6 and 100 characters long")
         @Email(message = "Email should be valid")
         String email
