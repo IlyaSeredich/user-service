@@ -49,7 +49,9 @@ class PaymentCardServiceImplTest {
     private static final Long CARD_ID = 1L;
     private static final Long USER_ID = 1L;
     private static final String NUMBER = "1111 1111 1111 1111";
+    private static final String NUMBER_2 = "2222 2222 2222 2222 ";
     private static final String HOLDER = "testName testSurname";
+    private static final String HOLDER_2 = "testName2 testSurname2";
     private static final String EXPIRATION_DATE = "12/99";
 
     @BeforeEach
@@ -208,14 +210,13 @@ class PaymentCardServiceImplTest {
 
     @Test
     void shouldUpdateCard() {
-        String newNumber = "2222 2222 2222 2222";
         PaymentCardUpdateDto updateDto = new PaymentCardUpdateDto(
-                newNumber,
-                "testName2 testSurname2",
-                "01/98"
+                NUMBER_2,
+                null,
+                null
         );
 
-        when(paymentCardRepository.existsByNumber(newNumber))
+        when(paymentCardRepository.existsByNumber(NUMBER_2))
                 .thenReturn(false);
 
         when(paymentCardRepository.findPaymentCardById(CARD_ID))
@@ -231,7 +232,7 @@ class PaymentCardServiceImplTest {
 
         assertEquals(responseDto, result);
 
-        verify(paymentCardRepository).existsByNumber(newNumber);
+        verify(paymentCardRepository).existsByNumber(NUMBER_2);
         verify(paymentCardRepository).findPaymentCardById(CARD_ID);
         verify(paymentCardMapper).updatePaymentCard(updateDto, paymentCard);
         verify(paymentCardRepository).save(paymentCard);
@@ -241,7 +242,7 @@ class PaymentCardServiceImplTest {
     void shouldRejectUpdatingWhenNumberAlreadyExists() {
         PaymentCardUpdateDto updateDto = new PaymentCardUpdateDto(
                 NUMBER,
-                "testName2",
+                HOLDER_2,
                 null);
 
         when(paymentCardRepository.existsByNumber(NUMBER))
@@ -258,12 +259,12 @@ class PaymentCardServiceImplTest {
     @Test
     void shouldRejectUpdatingWhenCardNotFound() {
         PaymentCardUpdateDto updateDto = new PaymentCardUpdateDto(
-                "2222 2222 2222 2222",
-                "testName2",
+                NUMBER_2,
+                HOLDER_2,
                 null
         );
 
-        when(paymentCardRepository.existsByNumber("2222 2222 2222 2222"))
+        when(paymentCardRepository.existsByNumber(NUMBER_2))
                 .thenReturn(false);
 
         when(paymentCardRepository.findPaymentCardById(CARD_ID))
@@ -274,7 +275,7 @@ class PaymentCardServiceImplTest {
                 () -> paymentCardService.updatePaymentCard(CARD_ID, updateDto)
         );
 
-        verify(paymentCardRepository).existsByNumber("2222 2222 2222 2222");
+        verify(paymentCardRepository).existsByNumber(NUMBER_2);
         verify(paymentCardRepository).findPaymentCardById(CARD_ID);
     }
 
