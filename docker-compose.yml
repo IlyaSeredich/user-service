@@ -1,18 +1,21 @@
 services:
   postgres:
     image: postgres:16
-    container_name: postgres
+    container_name: postgres-us
     restart: unless-stopped
     environment:
       POSTGRES_DB: '${DB_DATABASE}'
       POSTGRES_USER: '${DB_USER}'
       POSTGRES_PASSWORD: '${DB_PASSWORD}'
+      APP_USER: '${APP_USER}'
+      APP_USER_PASSWORD: '${APP_USER_PASSWORD}'
     ports:
       - '${DB_PORT}:5432'
     networks:
       - user-service-network
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init/init-user.sh:/docker-entrypoint-initdb.d/init-user.sh
 
   redis:
     image: redis:7
@@ -34,7 +37,7 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
     ports:
-      - "8080:8080"
+      - '8080:8080'
     networks:
       - user-service-network
     depends_on:
