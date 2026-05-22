@@ -52,6 +52,11 @@ class UserServiceImplTest {
     private static final String EMAIL = "test@test.com";
     private static final LocalDate BIRTHDATE = LocalDate.of(2000, 1, 1);
 
+    private static final String NAME2 = "testName2";
+    private static final String SURNAME2 = "testSurname2";
+    private static final String EMAIL2 = "test2@test.com";
+    private static final LocalDate BIRTHDATE2 = LocalDate.of(2000, 1, 1);
+
     @BeforeEach
     void setUp() {
         user = new User();
@@ -79,11 +84,12 @@ class UserServiceImplTest {
         );
 
         userUpdateDto = new UserUpdateDto(
-                NAME,
-                SURNAME,
-                BIRTHDATE,
-                EMAIL
+                NAME2,
+                SURNAME2,
+                BIRTHDATE2,
+                EMAIL2
         );
+
     }
 
     @Test
@@ -141,7 +147,7 @@ class UserServiceImplTest {
     }
 
     @Test
-    void shouldRejectGettingUserWhenUserNotFound() {
+    void shouldRejectGettingWhenUserNotFound() {
         when(userRepository.findUserById(ID))
                 .thenReturn(Optional.empty());
 
@@ -155,7 +161,7 @@ class UserServiceImplTest {
 
     @Test
     void shouldUpdateUser() {
-        when(userRepository.existsUserByEmail(EMAIL))
+        when(userRepository.existsUserByEmail(EMAIL2))
                 .thenReturn(false);
 
         when(userRepository.findUserById(ID))
@@ -166,7 +172,7 @@ class UserServiceImplTest {
 
         userService.updateUser(ID, userUpdateDto);
 
-        verify(userRepository).existsUserByEmail(EMAIL);
+        verify(userRepository).existsUserByEmail(EMAIL2);
         verify(userRepository).findUserById(ID);
         verify(userMapper).updateUser(userUpdateDto, user);
         verify(userRepository).save(user);
@@ -175,7 +181,7 @@ class UserServiceImplTest {
 
     @Test
     void shouldRejectUpdatingWhenEmailExists() {
-        when(userRepository.existsUserByEmail(EMAIL))
+        when(userRepository.existsUserByEmail(EMAIL2))
                 .thenReturn(true);
 
         assertThrows(
@@ -183,7 +189,7 @@ class UserServiceImplTest {
                 () -> userService.updateUser(ID, userUpdateDto)
         );
 
-        verify(userRepository).existsUserByEmail(EMAIL);
+        verify(userRepository).existsUserByEmail(EMAIL2);
         verify(userRepository, never()).save(any());
     }
 
