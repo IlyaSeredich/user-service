@@ -12,6 +12,8 @@ import com.seredich.userservice.service.UserService;
 import com.seredich.userservice.specification.UserSpecification;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +29,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "users", key = "#result.id")
     public UserResponseDto createUser(UserCreateDto userCreateDto) {
         validateEmailNotExists(userCreateDto.email());
         User user = userMapper.toUser(userCreateDto);
@@ -36,6 +39,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Cacheable(value = "users", key = "#id")
     public UserResponseDto getUser(Long id) {
         User user = getUserEntity(id);
         return userMapper.toDto(user);
@@ -51,6 +55,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "users", key = "#id")
     public UserResponseDto updateUser(Long id, UserUpdateDto userUpdateDto) {
         validateEmailNotExists(userUpdateDto.email());
         User user = getUserEntity(id);
@@ -61,6 +66,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "users", key = "#id")
     public void activateUser(Long id) {
         User user = getUserEntity(id);
         if(user.getActive()) throw new UserAlreadyActiveException();
@@ -70,6 +76,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "users", key = "#id")
     public void deactivateUser(Long id) {
         User user = getUserEntity(id);
         if(!user.getActive()) throw new UserAlreadyNonActiveException();

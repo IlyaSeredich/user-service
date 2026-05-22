@@ -10,6 +10,8 @@ import com.seredich.userservice.service.PaymentCardService;
 import com.seredich.userservice.service.UserService;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +29,7 @@ public class PaymentCardServiceImpl implements PaymentCardService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "paymentCards", key = "#result.id")
     public PaymentCardResponseDto createPaymentCard(PaymentCardCreateDto createDto) {
         validateCreatingConditions(createDto.userId(), createDto.number());
         User user = userService.getUserEntity(createDto.userId());
@@ -37,6 +40,7 @@ public class PaymentCardServiceImpl implements PaymentCardService {
     }
 
     @Override
+    @Cacheable(value = "paymentCards", key = "#id")
     public PaymentCardResponseDto getPaymentCard(Long id) {
         PaymentCard paymentCard = getPaymentCardEntity(id);
         return paymentCardMapper.toDto(paymentCard);
@@ -56,6 +60,7 @@ public class PaymentCardServiceImpl implements PaymentCardService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "paymentCards", key = "#id")
     public PaymentCardResponseDto updatePaymentCard(Long id, PaymentCardUpdateDto paymentCardUpdateDto) {
         validateNumberNotExists(paymentCardUpdateDto.number());
         PaymentCard paymentCard = getPaymentCardEntity(id);
@@ -66,6 +71,7 @@ public class PaymentCardServiceImpl implements PaymentCardService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "paymentCards", key = "#id")
     public void activatePaymentCard(Long id) {
         PaymentCard paymentCard = getPaymentCardEntity(id);
         if(paymentCard.getActive()) throw new PaymentCardAlreadyActiveException();
@@ -75,6 +81,7 @@ public class PaymentCardServiceImpl implements PaymentCardService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "paymentCards", key = "#id")
     public void deactivatePaymentCard(Long id) {
         PaymentCard paymentCard = getPaymentCardEntity(id);
         if(!paymentCard.getActive()) throw new PaymentCardAlreadyNonActiveException();
