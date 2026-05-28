@@ -1,5 +1,7 @@
 package com.seredich.userservice.dto;
 
+import java.io.Serializable;
+
 public record PaymentCardResponseDto(
         Long id,
         String number,
@@ -7,5 +9,5 @@ public record PaymentCardResponseDto(
         String expirationDate,
         Long userId,
         Boolean active
-) {
+) implements Serializable {
 }

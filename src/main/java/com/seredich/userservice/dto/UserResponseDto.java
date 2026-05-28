@@ -1,5 +1,6 @@
 package com.seredich.userservice.dto;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 
 public record UserResponseDto(
@@ -9,5 +10,5 @@ public record UserResponseDto(
         LocalDate birthDate,
         String email,
         Boolean active
-) {
+) implements Serializable {
 }
