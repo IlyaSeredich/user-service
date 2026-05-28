@@ -20,4 +20,8 @@ public interface PaymentCardRepository extends JpaRepository<PaymentCard, Long>,
 
     @Query("SELECT pc FROM PaymentCard pc WHERE pc.user.id = :userId")
     List<PaymentCard> findAllByUserId(@Param("userId") Long userId);
+
+    boolean existsByNumber(String number);
+
+    long countPaymentCardByUserId(Long userId);
 }

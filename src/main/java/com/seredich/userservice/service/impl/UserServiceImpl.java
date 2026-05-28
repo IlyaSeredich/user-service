@@ -2,6 +2,10 @@ package com.seredich.userservice.service.impl;
 
 import com.seredich.userservice.dto.*;
 import com.seredich.userservice.entity.User;
+import com.seredich.userservice.exception.EmailAlreadyExistException;
+import com.seredich.userservice.exception.UserAlreadyActiveException;
+import com.seredich.userservice.exception.UserAlreadyNonActiveException;
+import com.seredich.userservice.exception.UserNotFoundException;
 import com.seredich.userservice.mapper.UserMapper;
 import com.seredich.userservice.repository.UserRepository;
 import com.seredich.userservice.service.UserService;
@@ -15,8 +19,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
-
 @Service
 @AllArgsConstructor
 public class UserServiceImpl implements UserService {
@@ -26,7 +28,9 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponseDto createUser(UserCreateDto userCreateDto) {
+        validateEmailNotExists(userCreateDto.email());
         User user = userMapper.toUser(userCreateDto);
+        user.setActive(true);
         User savedUser = userRepository.save(user);
         return userMapper.toDto(savedUser);
     }
@@ -48,6 +52,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponseDto updateUser(Long id, UserUpdateDto userUpdateDto) {
+        validateEmailNotExists(userUpdateDto.email());
         User user = getUserEntity(id);
         userMapper.updateUser(userUpdateDto, user);
         userRepository.save(user);
@@ -58,6 +63,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void activateUser(Long id) {
         User user = getUserEntity(id);
+        if(user.getActive()) throw new UserAlreadyActiveException();
         user.setActive(true);
         userRepository.save(user);
     }
@@ -66,14 +72,14 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void deactivateUser(Long id) {
         User user = getUserEntity(id);
+        if(!user.getActive()) throw new UserAlreadyNonActiveException();
         user.setActive(false);
         userRepository.save(user);
     }
 
     @Override
-    public boolean canAddPaymentCard(Long userId) {
-        User user = getUserEntity(userId);
-        return user.getPaymentCards().size() < 5;
+    public User getUserEntity(Long id) {
+        return userRepository.findUserById(id).orElseThrow(() -> new UserNotFoundException(id));
     }
 
     private Pageable createPageable(PageRequestDto pageRequestDto) {
@@ -96,8 +102,9 @@ public class UserServiceImpl implements UserService {
         );
     }
 
-    private User getUserEntity(Long id) {
-        Optional<User> optionalUser = userRepository.findUserById(id);
-        return optionalUser.get();
+    private void validateEmailNotExists(String email) {
+        if (userRepository.existsUserByEmail(email)) {
+            throw new EmailAlreadyExistException(email);
+        }
     }
 }

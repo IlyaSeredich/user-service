@@ -15,7 +15,7 @@ public record PaymentCardCreateDto(
         @NotBlank(message = "Expiration date must not be blank")
         @Size(min = 5, max = 5, message = "Expiration date must have 5 characters")
         String expirationDate,
-        @NotNull
+        @NotNull(message = "User id must not be null")
         @Min(value = 1, message = "User id must be positive")
         Long userId
 ) {
