@@ -21,6 +21,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 @AllArgsConstructor
 public class UserServiceImpl implements UserService {
@@ -30,9 +32,9 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @CacheEvict(value = "users", key = "#result.id")
-    public UserResponseDto createUser(UserCreateDto userCreateDto) {
+    public UserResponseDto createUser(UserCreateDto userCreateDto, UUID id) {
         validateEmailNotExists(userCreateDto.email());
-        User user = userMapper.toUser(userCreateDto);
+        User user = userMapper.toUser(userCreateDto, id);
         user.setActive(true);
         User savedUser = userRepository.save(user);
         return userMapper.toDto(savedUser);
@@ -40,7 +42,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Cacheable(value = "users", key = "#id")
-    public UserResponseDto getUser(Long id) {
+    public UserResponseDto getUser(UUID id) {
         User user = getUserEntity(id);
         return userMapper.toDto(user);
     }
@@ -56,7 +58,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @CacheEvict(value = "users", key = "#id")
-    public UserResponseDto updateUser(Long id, UserUpdateDto userUpdateDto) {
+    public UserResponseDto updateUser(UserUpdateDto userUpdateDto, UUID id) {
         validateEmailNotExists(userUpdateDto.email());
         User user = getUserEntity(id);
         userMapper.updateUser(userUpdateDto, user);
@@ -67,7 +69,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @CacheEvict(value = "users", key = "#id")
-    public void activateUser(Long id) {
+    public void activateUser(UUID id) {
         User user = getUserEntity(id);
         if(user.getActive()) throw new UserAlreadyActiveException();
         user.setActive(true);
@@ -77,7 +79,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @CacheEvict(value = "users", key = "#id")
-    public void deactivateUser(Long id) {
+    public void deactivateUser(UUID id) {
         User user = getUserEntity(id);
         if(!user.getActive()) throw new UserAlreadyNonActiveException();
         user.setActive(false);
@@ -85,7 +87,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User getUserEntity(Long id) {
+    public User getUserEntity(UUID id) {
         return userRepository.findUserById(id).orElseThrow(() -> new UserNotFoundException(id));
     }
 

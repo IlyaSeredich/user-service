@@ -32,7 +32,8 @@ public class PaymentCardServiceImpl implements PaymentCardService {
     @CacheEvict(value = "paymentCards", key = "#result.id")
     public PaymentCardResponseDto createPaymentCard(PaymentCardCreateDto createDto) {
         validateCreatingConditions(createDto.userId(), createDto.number());
-        User user = userService.getUserEntity(createDto.userId());
+        User user = null;
+//                userService.getUserEntity(createDto.userId());
         PaymentCard paymentCard = paymentCardMapper.toPaymentCard(createDto, user);
         paymentCard.setActive(true);
         PaymentCard savedPaymentCard = paymentCardRepository.save(paymentCard);

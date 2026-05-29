@@ -15,7 +15,7 @@ databaseChangeLog:
                     primaryKeyName: pk_payment_cards
               - column:
                   name: user_id
-                  type: bigint
+                  type: uuid
                   constraints:
                     nullable: false
               - column:

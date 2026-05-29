@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface PaymentCardRepository extends JpaRepository<PaymentCard, Long>, JpaSpecificationExecutor<PaymentCard> {
@@ -19,9 +20,9 @@ public interface PaymentCardRepository extends JpaRepository<PaymentCard, Long>,
     Optional<PaymentCard> findPaymentCardById(@Param("id") Long id);
 
     @Query("SELECT pc FROM PaymentCard pc WHERE pc.user.id = :userId")
-    List<PaymentCard> findAllByUserId(@Param("userId") Long userId);
+    List<PaymentCard> findAllByUserId(@Param("userId") UUID userId);
 
     boolean existsByNumber(String number);
 
-    long countPaymentCardByUserId(Long userId);
+    long countPaymentCardByUserId(UUID userId);
 }

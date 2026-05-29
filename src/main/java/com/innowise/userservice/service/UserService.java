@@ -3,12 +3,14 @@ package com.innowise.userservice.service;
 import com.innowise.userservice.dto.*;
 import com.innowise.userservice.entity.User;
 
+import java.util.UUID;
+
 public interface UserService {
-    UserResponseDto createUser(UserCreateDto userCreateDto);
-    UserResponseDto getUser(Long id);
+    UserResponseDto createUser(UserCreateDto userCreateDto, UUID id);
+    UserResponseDto getUser(UUID id);
     PageUserResponseDto searchUsers(SearchUserDto searchUserDto, PageRequestDto pageRequestDto);
-    UserResponseDto updateUser(Long id, UserUpdateDto userUpdateDto);
-    User getUserEntity(Long id);
-    void activateUser(Long id);
-    void deactivateUser(Long id);
+    UserResponseDto updateUser(UserUpdateDto userUpdateDto, UUID id);
+    User getUserEntity(UUID id);
+    void activateUser(UUID id);
+    void deactivateUser(UUID id);
 }

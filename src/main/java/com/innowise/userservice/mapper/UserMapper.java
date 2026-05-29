@@ -9,10 +9,12 @@ import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 
+import java.util.UUID;
+
 @Mapper(componentModel = "spring")
 public interface UserMapper {
 
-    User toUser(UserCreateDto userCreateDto);
+    User toUser(UserCreateDto userCreateDto, UUID id );
     UserResponseDto toDto(User user);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
