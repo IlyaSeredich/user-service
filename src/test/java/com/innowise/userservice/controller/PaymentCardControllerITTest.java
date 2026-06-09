@@ -15,6 +15,7 @@
 //import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 //import org.springframework.http.HttpStatus;
 //import org.springframework.http.MediaType;
+//import org.springframework.security.oauth2.jwt.Jwt;
 //import org.springframework.test.context.ActiveProfiles;
 //import org.springframework.test.context.DynamicPropertyRegistry;
 //import org.springframework.test.context.DynamicPropertySource;
@@ -432,5 +433,12 @@
 //                HOLDER,
 //                EXPIRATION_DATE
 //        );
+//    }
+//
+//    private Jwt mockJwt(String userId) {
+//        return Jwt.withTokenValue("token")
+//                .claim("sub", userId)
+//                .header("alg", "none")
+//                .build();
 //    }
 //}

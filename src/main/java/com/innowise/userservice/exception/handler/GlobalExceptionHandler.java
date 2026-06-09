@@ -188,18 +188,18 @@ public class GlobalExceptionHandler {
                 .body(errorResponseDto);
     }
 
-//    @ExceptionHandler(Exception.class)
-//    public ResponseEntity<ErrorResponseDto> handleException(
-//            HttpServletRequest request
-//    ) {
-//        ErrorResponseDto responseDto = new ErrorResponseDto(
-//                "An unexpected error occurred",
-//                HttpStatus.INTERNAL_SERVER_ERROR,
-//                request.getRequestURI()
-//        );
-//
-//        return new ResponseEntity<>(responseDto, HttpStatus.INTERNAL_SERVER_ERROR);
-//    }
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponseDto> handleException(
+            HttpServletRequest request
+    ) {
+        ErrorResponseDto responseDto = new ErrorResponseDto(
+                "An unexpected error occurred",
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                request.getRequestURI()
+        );
+
+        return new ResponseEntity<>(responseDto, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 
 }
 

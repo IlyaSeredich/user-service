@@ -19,6 +19,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @AllArgsConstructor
@@ -32,8 +33,7 @@ public class PaymentCardServiceImpl implements PaymentCardService {
     @CacheEvict(value = "paymentCards", key = "#result.id")
     public PaymentCardResponseDto createPaymentCard(PaymentCardCreateDto createDto) {
         validateCreatingConditions(createDto.userId(), createDto.number());
-        User user = null;
-//                userService.getUserEntity(createDto.userId());
+        User user = userService.getUserEntity(createDto.userId());
         PaymentCard paymentCard = paymentCardMapper.toPaymentCard(createDto, user);
         paymentCard.setActive(true);
         PaymentCard savedPaymentCard = paymentCardRepository.save(paymentCard);
@@ -55,7 +55,7 @@ public class PaymentCardServiceImpl implements PaymentCardService {
     }
 
     @Override
-    public List<PaymentCardResponseDto> getAllPaymentCards(Long userId) {
+    public List<PaymentCardResponseDto> getAllPaymentCards(UUID userId) {
         return paymentCardRepository.findAllByUserId(userId).stream().map(paymentCardMapper::toDto).toList();
     }
 
@@ -114,12 +114,12 @@ public class PaymentCardServiceImpl implements PaymentCardService {
         );
     }
 
-    private void validateCreatingConditions(Long userId, String number) {
+    private void validateCreatingConditions(UUID userId, String number) {
         validatePaymentCardLimit(userId);
         validateNumberNotExists(number);
     }
 
-    private void validatePaymentCardLimit(Long userId) {
+    private void validatePaymentCardLimit(UUID userId) {
         long count = paymentCardRepository.countPaymentCardByUserId(userId);
         if (count >= 5) throw new CardLimitExceededException();
     }

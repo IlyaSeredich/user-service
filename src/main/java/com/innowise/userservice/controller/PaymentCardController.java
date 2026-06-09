@@ -7,10 +7,13 @@ import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/cards")
@@ -42,11 +45,12 @@ public class PaymentCardController {
         return ResponseEntity.ok(allPaymentCards);
     }
 
-    @GetMapping("/user/{userId}")
+    @GetMapping("/user")
     public ResponseEntity<List<PaymentCardResponseDto>> getUserCards(
-            @PathVariable(name = "userId") @Min(1) Long userId
-    ) {
-        List<PaymentCardResponseDto> allUserCards = paymentCardService.getAllPaymentCards(userId);
+            @AuthenticationPrincipal Jwt jwt
+            ) {
+        List<PaymentCardResponseDto> allUserCards =
+                paymentCardService.getAllPaymentCards(UUID.fromString(jwt.getSubject()));
         return ResponseEntity.ok(allUserCards);
     }
 
