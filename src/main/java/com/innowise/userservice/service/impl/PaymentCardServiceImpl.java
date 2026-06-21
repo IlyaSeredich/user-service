@@ -12,6 +12,7 @@ import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @AllArgsConstructor
@@ -30,6 +32,7 @@ public class PaymentCardServiceImpl implements PaymentCardService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "users", key = "#createDto.userId")
     public PaymentCardResponseDto createPaymentCard(PaymentCardCreateDto createDto) {
         validateCreatingConditions(createDto.userId(), createDto.number());
         User user = userService.getUserEntity(createDto.userId());
@@ -54,14 +57,17 @@ public class PaymentCardServiceImpl implements PaymentCardService {
     }
 
     @Override
-    public List<PaymentCardResponseDto> getAllPaymentCards(Long userId) {
-        return paymentCardRepository.findAllByUserId(userId).stream().map(paymentCardMapper::toDto).toList();
+    public List<PaymentCardResponseDto> getAllPaymentCards(UUID id) {
+        return paymentCardRepository.findAllByUserId(id).stream().map(paymentCardMapper::toDto).toList();
     }
 
     @Override
     @Transactional
-    @CacheEvict(value = "paymentCards", key = "#id")
-    public PaymentCardResponseDto updatePaymentCard(Long id, PaymentCardUpdateDto paymentCardUpdateDto) {
+    @Caching(evict = {
+            @CacheEvict(value = "paymentCards", key = "#id"),
+            @CacheEvict(value = "users", key = "#userId")
+    })
+    public PaymentCardResponseDto updatePaymentCard(Long id, UUID userId, PaymentCardUpdateDto paymentCardUpdateDto) {
         PaymentCard paymentCard = getPaymentCardEntity(id);
         validateNumberForUpdating(id, paymentCardUpdateDto.number());
         paymentCardMapper.updatePaymentCard(paymentCardUpdateDto, paymentCard);
@@ -71,8 +77,11 @@ public class PaymentCardServiceImpl implements PaymentCardService {
 
     @Override
     @Transactional
-    @CacheEvict(value = "paymentCards", key = "#id")
-    public void activatePaymentCard(Long id) {
+    @Caching(evict = {
+            @CacheEvict(value = "paymentCards", key = "#id"),
+            @CacheEvict(value = "users", key = "#userId")
+    })
+    public void activatePaymentCard(Long id, UUID userId) {
         PaymentCard paymentCard = getPaymentCardEntity(id);
         if(paymentCard.getActive()) throw new PaymentCardAlreadyActiveException();
         paymentCard.setActive(true);
@@ -81,8 +90,11 @@ public class PaymentCardServiceImpl implements PaymentCardService {
 
     @Override
     @Transactional
-    @CacheEvict(value = "paymentCards", key = "#id")
-    public void deactivatePaymentCard(Long id) {
+    @Caching(evict = {
+            @CacheEvict(value = "paymentCards", key = "#id"),
+            @CacheEvict(value = "users", key = "#userId")
+    })
+    public void deactivatePaymentCard(Long id, UUID userId) {
         PaymentCard paymentCard = getPaymentCardEntity(id);
         if(!paymentCard.getActive()) throw new PaymentCardAlreadyNonActiveException();
         paymentCard.setActive(false);
@@ -118,12 +130,12 @@ public class PaymentCardServiceImpl implements PaymentCardService {
         );
     }
 
-    private void validateCreatingConditions(Long userId, String number) {
+    private void validateCreatingConditions(UUID userId, String number) {
         validatePaymentCardLimit(userId);
         validateNumberNotExists(number);
     }
 
-    private void validatePaymentCardLimit(Long userId) {
+    private void validatePaymentCardLimit(UUID userId) {
         long count = paymentCardRepository.countPaymentCardByUserId(userId);
         if (count >= 5) throw new PaymentCardLimitExceededException();
     }

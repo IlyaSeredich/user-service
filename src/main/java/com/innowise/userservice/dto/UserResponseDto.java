@@ -3,9 +3,10 @@ package com.innowise.userservice.dto;
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 public record UserResponseDto(
-        Long id,
+        UUID id,
         String name,
         String surname,
         LocalDate birthDate,

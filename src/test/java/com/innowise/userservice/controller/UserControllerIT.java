@@ -4,25 +4,40 @@ import com.innowise.userservice.dto.UserCreateDto;
 import com.innowise.userservice.dto.UserUpdateDto;
 import com.innowise.userservice.entity.User;
 import com.innowise.userservice.repository.UserRepository;
+import dasniko.testcontainers.keycloak.KeycloakContainer;
 import jakarta.transaction.Transactional;
+import jakarta.ws.rs.core.Response;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.keycloak.OAuth2Constants;
+import org.keycloak.admin.client.CreatedResponseUtil;
+import org.keycloak.admin.client.Keycloak;
+import org.keycloak.admin.client.KeycloakBuilder;
+import org.keycloak.representations.idm.ClientRepresentation;
+import org.keycloak.representations.idm.RealmRepresentation;
+import org.keycloak.representations.idm.RoleRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
+import org.springframework.http.*;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.client.RestTemplate;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.Duration;
 import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -38,6 +53,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Testcontainers
 class UserControllerIT {
     @Container
+    protected static final KeycloakContainer keycloakContainer = new KeycloakContainer("quay.io/keycloak/keycloak:26.4.5")
+            .withAdminUsername("admin")
+            .withAdminPassword("admin")
+            .withStartupTimeout(Duration.ofMinutes(5));
+
+    @Container
     @ServiceConnection
     private static final PostgreSQLContainer postgreSQLContainer = new PostgreSQLContainer("postgres:16")
             .withDatabaseName("test-db")
@@ -52,11 +73,15 @@ class UserControllerIT {
 
     @DynamicPropertySource
     private static void sourceProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri",
+                () -> keycloakContainer.getAuthServerUrl() +
+                        "/realms/test-realm/protocol/openid-connect/certs");
         registry.add("spring.data.redis.host",
                 () -> "localhost");
         registry.add("spring.data.redis.port",
                 () -> redisContainer.getMappedPort(6379));
     }
+
     @Autowired
     private ObjectMapper objectMapper;
     @Autowired
@@ -74,15 +99,109 @@ class UserControllerIT {
     private static final LocalDate BIRTHDATE = LocalDate.of(2000, 1, 1);
 
 
+    private static final String REALM = "test-realm";
+    private static final String USER_CLIENT = "user-test-client";
+    private static final String ADMIN_CLIENT = "admin-test-client";
+    private static final String SECRET = "test-secret";
+    private static final String USER_ROLE = "user";
+    private static final String ADMIN_ROLE = "admin";
+
+    @BeforeAll
+    static void setupKeycloak() {
+        String authUrl = keycloakContainer.getAuthServerUrl();
+
+        Keycloak keycloak = KeycloakBuilder.builder()
+                .serverUrl(authUrl)
+                .realm("master")
+                .clientId("admin-cli")
+                .username("admin")
+                .password("admin")
+                .build();
+
+        RealmRepresentation realm = new RealmRepresentation();
+        realm.setRealm(REALM);
+        realm.setEnabled(true);
+        keycloak.realms().create(realm);
+
+        ClientRepresentation userClient = new ClientRepresentation();
+        userClient.setClientId(USER_CLIENT);
+        userClient.setStandardFlowEnabled(true);
+        userClient.setPublicClient(false);
+        userClient.setSecret(SECRET);
+        userClient.setServiceAccountsEnabled(true);
+
+        ClientRepresentation adminClient = new ClientRepresentation();
+        adminClient.setClientId(ADMIN_CLIENT);
+        adminClient.setStandardFlowEnabled(true);
+        adminClient.setPublicClient(false);
+        adminClient.setSecret(SECRET);
+        adminClient.setServiceAccountsEnabled(true);
+
+        Response userResponse = keycloak.realm(REALM).clients().create(userClient);
+        Response adminResponse = keycloak.realm(REALM).clients().create(adminClient);
+
+        String userId = CreatedResponseUtil.getCreatedId(userResponse);
+        String adminId = CreatedResponseUtil.getCreatedId(adminResponse);
+
+        UserRepresentation userServiceAccountUser = keycloak.realm(REALM)
+                .clients()
+                .get(userId)
+                .getServiceAccountUser();
+
+        UserRepresentation adminServiceAccountUser = keycloak.realm(REALM)
+                .clients()
+                .get(adminId)
+                .getServiceAccountUser();
+
+        RoleRepresentation userRole = new RoleRepresentation();
+        userRole.setName(USER_ROLE);
+        keycloak.realm(REALM).roles().create(userRole);
+
+        RoleRepresentation adminRole = new RoleRepresentation();
+        adminRole.setName(ADMIN_ROLE);
+        keycloak.realm(REALM).roles().create(adminRole);
+
+        RoleRepresentation userRoleRepresentation = keycloak.realm(REALM).roles()
+                .get(USER_ROLE)
+                .toRepresentation();
+
+        RoleRepresentation adminRoleRepresentation = keycloak.realm(REALM).roles()
+                .get(ADMIN_ROLE)
+                .toRepresentation();
+
+        keycloak.realm(REALM).users()
+                .get(userServiceAccountUser.getId())
+                .roles()
+                .realmLevel()
+                .add(List.of(userRoleRepresentation));
+
+        keycloak.realm(REALM).users()
+                .get(adminServiceAccountUser.getId())
+                .roles()
+                .realmLevel()
+                .add(List.of(adminRoleRepresentation));
+    }
+
+    @BeforeEach
+    void clearDb() {
+        userRepository.deleteAll();
+    }
+
     @Test
     void shouldCreateUser() throws Exception {
-        UserCreateDto userCreateDto = getUserCreateDto();
+        String token = getUserAccessToken();
+        String id = extractSubject(token);
+        UserCreateDto userCreateDto = getUserCreateDto(UUID.fromString(id));
 
         mockMvc.perform(post(URL)
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                "Bearer " + token
+                        )
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(userCreateDto)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").isNumber())
+                .andExpect(jsonPath("$.id").value(id))
                 .andExpect(jsonPath("$.name").value(NAME))
                 .andExpect(jsonPath("$.surname").value(SURNAME))
                 .andExpect(jsonPath("$.birthDate").isNotEmpty())
@@ -95,7 +214,11 @@ class UserControllerIT {
     void shouldRejectCreatingWhenEmailAlreadyExists() throws Exception {
         createUserInDb(EMAIL);
 
+        String token = getUserAccessToken();
+        String id = extractSubject(token);
+
         UserCreateDto userCreateDto = new UserCreateDto(
+                UUID.fromString(id),
                 NAME_2,
                 SURNAME_2,
                 BIRTHDATE,
@@ -103,6 +226,10 @@ class UserControllerIT {
         );
 
         mockMvc.perform(post(URL)
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                "Bearer " + token
+                        )
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(userCreateDto)))
                 .andExpect(status().isConflict())
@@ -116,9 +243,15 @@ class UserControllerIT {
 
     @Test
     void shouldRejectCreatingWhenValidationFails() throws Exception {
-        UserCreateDto dto = new UserCreateDto("", "", null, null);
+        UserCreateDto dto = new UserCreateDto(UUID.randomUUID(),"", "", null, null);
+
+        String token = getUserAccessToken();
 
         mockMvc.perform(post(URL)
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                "Bearer " + token
+                        )
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isBadRequest())
@@ -132,11 +265,25 @@ class UserControllerIT {
 
     @Test
     void shouldGetUserById() throws Exception {
-        User user = createUserInDb(EMAIL);
+        String token = getUserAccessToken();
+        String id = extractSubject(token);
 
-        mockMvc.perform(get(URL + "/" + user.getId()))
+        User user = new User();
+        user.setId(UUID.fromString(id));
+        user.setName(NAME);
+        user.setSurname(SURNAME);
+        user.setBirthDate(BIRTHDATE);
+        user.setEmail(EMAIL);
+        user.setActive(true);
+
+        userRepository.save(user);
+
+        mockMvc.perform(get(URL + "/me").header(
+                        HttpHeaders.AUTHORIZATION,
+                        "Bearer " + token
+                ))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(user.getId()))
+                .andExpect(jsonPath("$.id").value(id))
                 .andExpect(jsonPath("$.name").value(NAME))
                 .andExpect(jsonPath("$.surname").value(SURNAME))
                 .andExpect(jsonPath("$.birthDate").isNotEmpty())
@@ -145,29 +292,6 @@ class UserControllerIT {
                 .andDo(print());
     }
 
-    @Test
-    void shouldRejectGettingUserWhenUserNotFound() throws Exception {
-        mockMvc.perform(get(URL + "/" + 111L))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").isNotEmpty())
-                .andExpect(jsonPath("$.error").value(HttpStatus.NOT_FOUND.getReasonPhrase()))
-                .andExpect(jsonPath("$.status").value(HttpStatus.NOT_FOUND.value()))
-                .andExpect(jsonPath("$.path").value(URL + "/" + 111L))
-                .andExpect(jsonPath("$.dateTime").isNotEmpty())
-                .andDo(print());
-    }
-
-    @Test
-    void shouldRejectGettingUserWhenIdIsInvalid() throws Exception {
-        mockMvc.perform(get(URL + "/" + 0))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").isNotEmpty())
-                .andExpect(jsonPath("$.error").value(HttpStatus.BAD_REQUEST.getReasonPhrase()))
-                .andExpect(jsonPath("$.status").value(HttpStatus.BAD_REQUEST.value()))
-                .andExpect(jsonPath("$.path").value(URL + "/" + 0))
-                .andExpect(jsonPath("$.dateTime").isNotEmpty())
-                .andDo(print());
-    }
 
     @Test
     void shouldGetPagedUsers() throws Exception {
@@ -175,7 +299,12 @@ class UserControllerIT {
         createUserInDb(EMAIL_2);
         createUserInDb("test3@test.com");
 
-        mockMvc.perform(get(URL))
+        String token = getAdminAccessToken();
+
+        mockMvc.perform(get(URL).header(
+                        HttpHeaders.AUTHORIZATION,
+                        "Bearer " + token
+                ))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.content.length()").value(3))
@@ -190,7 +319,10 @@ class UserControllerIT {
     void shouldFilterUsers() throws Exception {
         createUserInDb(EMAIL);
 
+        String token = getAdminAccessToken();
+
         User user = new User();
+        user.setId(UUID.randomUUID());
         user.setName(NAME_2);
         user.setSurname(SURNAME);
         user.setBirthDate(BIRTHDATE);
@@ -199,7 +331,10 @@ class UserControllerIT {
 
         userRepository.save(user);
 
-        mockMvc.perform(get(URL)
+        mockMvc.perform(get(URL).header(
+                                HttpHeaders.AUTHORIZATION,
+                                "Bearer " + token
+                        )
                         .param("name", NAME))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(1))
@@ -209,14 +344,29 @@ class UserControllerIT {
 
     @Test
     void shouldUpdateUser() throws Exception {
-        User user = createUserInDb(EMAIL);
         UserUpdateDto userUpdateDto = getUserUpdateDto(EMAIL_2);
 
-        mockMvc.perform(patch(URL + "/" + user.getId())
+        String token = getUserAccessToken();
+        String id = extractSubject(token);
+
+        User user = new User();
+        user.setId(UUID.fromString(id));
+        user.setName(NAME);
+        user.setSurname(SURNAME);
+        user.setBirthDate(BIRTHDATE);
+        user.setEmail(EMAIL);
+        user.setActive(true);
+
+        userRepository.save(user);
+
+        mockMvc.perform(patch(URL).header(
+                                HttpHeaders.AUTHORIZATION,
+                                "Bearer " + token
+                        )
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(userUpdateDto)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(user.getId()))
+                .andExpect(jsonPath("$.id").value(id))
                 .andExpect(jsonPath("$.name").value(NAME))
                 .andExpect(jsonPath("$.surname").value(SURNAME))
                 .andExpect(jsonPath("$.birthDate").isNotEmpty())
@@ -228,36 +378,39 @@ class UserControllerIT {
         assertEquals(EMAIL_2, updatedUser.getEmail());
     }
 
-    @Test
-    void shouldRejectUpdatingWhenUserNotFound() throws Exception {
-        UserUpdateDto userUpdateDto = getUserUpdateDto(EMAIL);
-        mockMvc.perform(patch(URL + "/" + 111L)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(userUpdateDto)))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").isNotEmpty())
-                .andExpect(jsonPath("$.error").value(HttpStatus.NOT_FOUND.getReasonPhrase()))
-                .andExpect(jsonPath("$.status").value(HttpStatus.NOT_FOUND.value()))
-                .andExpect(jsonPath("$.path").value(URL + "/" + 111L))
-                .andExpect(jsonPath("$.dateTime").isNotEmpty())
-                .andDo(print());
-    }
 
     @Test
     void shouldRejectUpdatingWhenEmailAlreadyExists() throws Exception {
         User user = createUserInDb(EMAIL);
-        createUserInDb(EMAIL_2);
 
-        UserUpdateDto dto = getUserUpdateDto(EMAIL_2);
+        String token = getUserAccessToken();
+        String id = extractSubject(token);
 
-        mockMvc.perform(patch(URL + "/" + user.getId())
+        User user2 = new User();
+        user2.setId(UUID.fromString(id));
+        user2.setName(NAME);
+        user2.setSurname(SURNAME);
+        user2.setBirthDate(BIRTHDATE);
+        user2.setEmail(EMAIL_2);
+        user2.setActive(true);
+
+        userRepository.save(user2);
+
+        UserUpdateDto dto = getUserUpdateDto(EMAIL);
+
+
+        mockMvc.perform(patch(URL)
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                "Bearer " + token
+                        )
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").isNotEmpty())
                 .andExpect(jsonPath("$.error").value(HttpStatus.CONFLICT.getReasonPhrase()))
                 .andExpect(jsonPath("$.status").value(HttpStatus.CONFLICT.value()))
-                .andExpect(jsonPath("$.path").value(URL + "/" + user.getId()))
+                .andExpect(jsonPath("$.path").value(URL))
                 .andExpect(jsonPath("$.dateTime").isNotEmpty())
                 .andDo(print());
     }
@@ -266,7 +419,13 @@ class UserControllerIT {
     void shouldRejectActivatingUserWhenUserAlreadyActive() throws Exception {
         User user = createUserInDb(EMAIL);
 
-        mockMvc.perform(patch(URL + "/" + user.getId() + "/activate"))
+        String token = getAdminAccessToken();
+
+        mockMvc.perform(patch(URL + "/" + user.getId() + "/activate")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                "Bearer " + token
+                        ))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").isNotEmpty())
                 .andExpect(jsonPath("$.error").value(HttpStatus.CONFLICT.getReasonPhrase()))
@@ -278,12 +437,18 @@ class UserControllerIT {
 
     @Test
     void shouldRejectActivatingUserWhenUserNotFound() throws Exception {
-        mockMvc.perform(patch(URL + "/" + 111L + "/activate"))
+        String token = getAdminAccessToken();
+
+        mockMvc.perform(patch(URL + "/" + UUID.randomUUID() + "/activate")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                "Bearer " + token
+                        ))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").isNotEmpty())
                 .andExpect(jsonPath("$.error").value(HttpStatus.NOT_FOUND.getReasonPhrase()))
                 .andExpect(jsonPath("$.status").value(HttpStatus.NOT_FOUND.value()))
-                .andExpect(jsonPath("$.path").value(URL + "/" + 111L + "/activate"))
+                .andExpect(jsonPath("$.path").isNotEmpty())
                 .andExpect(jsonPath("$.dateTime").isNotEmpty())
                 .andDo(print());
     }
@@ -291,8 +456,13 @@ class UserControllerIT {
     @Test
     void shouldDeactivateUser() throws Exception {
         User user = createUserInDb(EMAIL);
+        String token = getAdminAccessToken();
 
-        mockMvc.perform(patch(URL + "/" + user.getId() + "/deactivate"))
+        mockMvc.perform(patch(URL + "/" + user.getId() + "/deactivate")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                "Bearer " + token
+                        ))
                 .andExpect(status().isOk());
 
         User deactivatedUser = userRepository.findById(user.getId()).orElseThrow();
@@ -303,9 +473,19 @@ class UserControllerIT {
     void shouldRejectDeactivatingUserWhenUserAlreadyInactive() throws Exception {
         User user = createUserInDb(EMAIL);
 
-        mockMvc.perform(patch(URL + "/" + user.getId() + "/deactivate"));
+        String token = getAdminAccessToken();
 
-        mockMvc.perform(patch(URL + "/" + user.getId() + "/deactivate"))
+        mockMvc.perform(patch(URL + "/" + user.getId() + "/deactivate")
+                .header(
+                        HttpHeaders.AUTHORIZATION,
+                        "Bearer " + token
+                ));
+
+        mockMvc.perform(patch(URL + "/" + user.getId() + "/deactivate")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                "Bearer " + token
+                        ))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").isNotEmpty())
                 .andExpect(jsonPath("$.error").value(HttpStatus.CONFLICT.getReasonPhrase()))
@@ -317,18 +497,25 @@ class UserControllerIT {
 
     @Test
     void  shouldRejectDeactivatingUserWhenUserNotFound() throws Exception {
-        mockMvc.perform(patch(URL + "/" + 111L + "/deactivate"))
+        String token = getAdminAccessToken();
+
+        mockMvc.perform(patch(URL + "/" + UUID.randomUUID() + "/deactivate")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                "Bearer " + token
+                        ))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").isNotEmpty())
                 .andExpect(jsonPath("$.error").value(HttpStatus.NOT_FOUND.getReasonPhrase()))
                 .andExpect(jsonPath("$.status").value(HttpStatus.NOT_FOUND.value()))
-                .andExpect(jsonPath("$.path").value(URL + "/" + 111L + "/deactivate"))
+                .andExpect(jsonPath("$.path").isNotEmpty())
                 .andExpect(jsonPath("$.dateTime").isNotEmpty())
                 .andDo(print());
     }
 
     private User createUserInDb(String email) {
         User user = new User();
+        user.setId(UUID.randomUUID());
         user.setName(NAME);
         user.setSurname(SURNAME);
         user.setBirthDate(BIRTHDATE);
@@ -338,8 +525,9 @@ class UserControllerIT {
         return userRepository.save(user);
     }
 
-    private UserCreateDto getUserCreateDto() {
+    private UserCreateDto getUserCreateDto(UUID id) {
         return new UserCreateDto(
+                id,
                 NAME,
                 SURNAME,
                 BIRTHDATE,
@@ -354,5 +542,68 @@ class UserControllerIT {
                 BIRTHDATE,
                 email
         );
+    }
+
+    private String getUserAccessToken() {
+        String tokenUrl = keycloakContainer.getAuthServerUrl()
+                + "/realms/test-realm/protocol/openid-connect/token";
+
+        Map<String, String> params = new HashMap<>();
+        params.put("realm", REALM);
+        params.put("client_id", USER_CLIENT);
+        params.put("client_secret", SECRET);
+        params.put("grant_type", OAuth2Constants.CLIENT_CREDENTIALS);
+
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        String body = params.entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue())
+                .collect(Collectors.joining("&"));
+
+        HttpEntity<String> request = new HttpEntity<>(body, headers);
+        ResponseEntity<Map> response = new RestTemplate().postForEntity(tokenUrl, request, Map.class);
+
+        return (String) response.getBody().get("access_token");
+    }
+
+    private String extractSubject(String token) {
+        String payload = token.split("\\.")[1];
+
+        byte[] decoded = Base64.getUrlDecoder()
+                .decode(payload);
+
+        try {
+            Map<String, Object> claims = objectMapper.readValue(decoded, Map.class);
+
+            return (String) claims.get("sub");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private String getAdminAccessToken() {
+        String tokenUrl = keycloakContainer.getAuthServerUrl()
+                + "/realms/test-realm/protocol/openid-connect/token";
+
+        Map<String, String> params = new HashMap<>();
+        params.put("realm", "test-realm");
+        params.put("client_id", "admin-test-client");
+        params.put("client_secret", SECRET);
+        params.put("grant_type", OAuth2Constants.CLIENT_CREDENTIALS);
+
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        String body = params.entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue())
+                .collect(Collectors.joining("&"));
+
+        HttpEntity<String> request = new HttpEntity<>(body, headers);
+        ResponseEntity<Map> response = new RestTemplate().postForEntity(tokenUrl, request, Map.class);
+
+        return (String) response.getBody().get("access_token");
     }
 }

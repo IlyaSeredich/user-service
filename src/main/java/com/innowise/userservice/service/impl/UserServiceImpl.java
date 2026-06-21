@@ -8,7 +8,6 @@ import com.innowise.userservice.exception.UserAlreadyNonActiveException;
 import com.innowise.userservice.exception.UserNotFoundException;
 import com.innowise.userservice.mapper.UserMapper;
 import com.innowise.userservice.repository.UserRepository;
-import com.innowise.userservice.service.PaymentCardService;
 import com.innowise.userservice.service.UserService;
 import com.innowise.userservice.specification.UserSpecification;
 import jakarta.transaction.Transactional;
@@ -22,8 +21,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @AllArgsConstructor
@@ -31,7 +30,6 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final UserSpecification userSpecification;
-//    private final PaymentCardService paymentCardService;
 
     @Override
     @Transactional
@@ -46,10 +44,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Cacheable(value = "users", key = "#id")
     @Transactional
-    public UserResponseDto getUser(Long id) {
+    public UserResponseDto getUser(UUID id) {
         User user = getUserEntity(id);
-//        List<PaymentCardResponseDto> paymentCardResponseDtoList =
-//                paymentCardService.createPaymentCardResponseDtoList(user.getPaymentCards());
         return userMapper.toDto(user);
     }
 
@@ -64,7 +60,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @CacheEvict(value = "users", key = "#id")
-    public UserResponseDto updateUser(Long id, UserUpdateDto userUpdateDto) {
+    public UserResponseDto updateUser(UserUpdateDto userUpdateDto, UUID id) {
         User user = getUserEntity(id);
         validateEmailForUpdating(id, userUpdateDto.email());
         userMapper.updateUser(userUpdateDto, user);
@@ -75,8 +71,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @CacheEvict(value = "users", key = "#id")
-    public void activateUser(Long id) {
-        User user = getUserEntity(id);
+    public void activateUser(String id) {
+        User user = getUserEntity(UUID.fromString(id));
         if(user.getActive()) throw new UserAlreadyActiveException();
         user.setActive(true);
         userRepository.save(user);
@@ -85,15 +81,15 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @CacheEvict(value = "users", key = "#id")
-    public void deactivateUser(Long id) {
-        User user = getUserEntity(id);
+    public void deactivateUser(String id) {
+        User user = getUserEntity(UUID.fromString(id));
         if(!user.getActive()) throw new UserAlreadyNonActiveException();
         user.setActive(false);
         userRepository.save(user);
     }
 
     @Override
-    public User getUserEntity(Long id) {
+    public User getUserEntity(UUID id) {
         return userRepository.findUserById(id).orElseThrow(() -> new UserNotFoundException(id));
     }
 
@@ -117,7 +113,7 @@ public class UserServiceImpl implements UserService {
         );
     }
 
-    private void validateEmailForUpdating(Long id, String email) {
+    private void validateEmailForUpdating(UUID id, String email) {
         if(email != null) {
             Optional<User> user = userRepository.findByEmail(email);
             if(user.isPresent() && !user.get().getId().equals(id)) {

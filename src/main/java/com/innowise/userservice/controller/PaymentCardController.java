@@ -7,10 +7,13 @@ import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/cards")
@@ -37,38 +40,44 @@ public class PaymentCardController {
     @GetMapping
     public ResponseEntity<PagePaymentCardResponseDto> getAllCards(
             @Valid @ModelAttribute PageRequestDto pageRequestDto
-            ) {
+    ) {
         PagePaymentCardResponseDto allPaymentCards = paymentCardService.getAllPaymentCards(pageRequestDto);
         return ResponseEntity.ok(allPaymentCards);
     }
 
-    @GetMapping("/user/{userId}")
+    @GetMapping("/user")
     public ResponseEntity<List<PaymentCardResponseDto>> getUserCards(
-            @PathVariable(name = "userId") @Min(1) Long userId
+            @AuthenticationPrincipal Jwt jwt
     ) {
-        List<PaymentCardResponseDto> allUserCards = paymentCardService.getAllPaymentCards(userId);
+        List<PaymentCardResponseDto> allUserCards =
+                paymentCardService.getAllPaymentCards(UUID.fromString(jwt.getSubject()));
         return ResponseEntity.ok(allUserCards);
     }
 
-    @PatchMapping("/{id}")
+    @PatchMapping("{userId}/{id}")
     public ResponseEntity<PaymentCardResponseDto> updateCard(
             @PathVariable(name = "id") @Min(1) Long id,
+            @PathVariable(name = "userId") UUID userId,
             @RequestBody @Valid PaymentCardUpdateDto paymentCardUpdateDto
-            ) {
+    ) {
         PaymentCardResponseDto paymentCardResponseDto =
-                paymentCardService.updatePaymentCard(id, paymentCardUpdateDto);
+                paymentCardService.updatePaymentCard(id, userId, paymentCardUpdateDto);
         return ResponseEntity.ok(paymentCardResponseDto);
     }
 
-    @PatchMapping("/{id}/activate")
-    public ResponseEntity<Void> activateCard(@PathVariable(name = "id") @Min(1) Long id) {
-        paymentCardService.activatePaymentCard(id);
+    @PatchMapping("/{userId}/{id}/activate")
+    public ResponseEntity<Void> activateCard(
+            @PathVariable(name = "id") @Min(1) Long id,
+            @PathVariable(name = "userId") UUID userId) {
+        paymentCardService.activatePaymentCard(id, userId);
         return ResponseEntity.ok().build();
     }
 
-    @PatchMapping("/{id}/deactivate")
-    public ResponseEntity<Void> deactivateCard(@PathVariable(name = "id") @Min(1) Long id) {
-        paymentCardService.deactivatePaymentCard(id);
+    @PatchMapping("/{userId}/{id}/deactivate")
+    public ResponseEntity<Void> deactivateCard(
+            @PathVariable(name = "id") @Min(1) Long id,
+            @PathVariable(name = "userId") UUID userId) {
+        paymentCardService.deactivatePaymentCard(id, userId);
         return ResponseEntity.ok().build();
     }
 }

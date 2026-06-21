@@ -26,25 +26,25 @@ services:
     networks:
       - user-service-network
 
-  user-service:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    env_file:
-      - .env
-    container_name: user-service
-    restart: unless-stopped
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-    ports:
-      - '8080:8080'
-    networks:
-      - user-service-network
-    depends_on:
-        postgres:
-          condition: service_started
-        redis:
-          condition: service_started
+#  user-service:
+#    build:
+#      context: .
+#      dockerfile: Dockerfile
+#    env_file:
+#      - .env
+#    container_name: user-service
+#    restart: unless-stopped
+#    environment:
+#      - SPRING_PROFILES_ACTIVE=docker
+#    ports:
+#      - '8080:8080'
+#    networks:
+#      - user-service-network
+#    depends_on:
+#        postgres:
+#          condition: service_started
+#        redis:
+#          condition: service_started
 
 volumes:
   postgres_data:

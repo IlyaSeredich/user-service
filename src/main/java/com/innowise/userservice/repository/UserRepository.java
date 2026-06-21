@@ -8,14 +8,15 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificationExecutor<User> {
+public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificationExecutor<User> {
     @Query(value = """
                 SELECT * FROM users
                 WHERE id = :id
             """, nativeQuery = true)
-    Optional<User> findUserById(@Param("id") Long id);
+    Optional<User> findUserById(@Param("id") UUID id);
 
     boolean existsUserByEmail(String email);
 

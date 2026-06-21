@@ -27,6 +27,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -55,8 +56,8 @@ class UserServiceImplTest {
     private UserCreateDto userCreateDto;
     private UserUpdateDto userUpdateDto;
 
-    private static final Long ID = 1L;
-    private static final Long ID_2 = 2L;
+    private static final UUID ID = UUID.randomUUID();
+    private static final UUID ID_2 = UUID.randomUUID();
     private static final String NAME = "testName";
     private static final String SURNAME = "testSurname";
     private static final String EMAIL = "test@test.com";
@@ -88,6 +89,7 @@ class UserServiceImplTest {
         );
 
         userCreateDto = new UserCreateDto(
+                ID,
                 NAME,
                 SURNAME,
                 BIRTHDATE,
@@ -211,7 +213,7 @@ class UserServiceImplTest {
         when(userMapper.toDto(user))
                 .thenReturn(userResponseDto);
 
-        userService.updateUser(ID, userUpdateDto);
+        userService.updateUser(userUpdateDto, ID);
 
         verify(userRepository).findByEmail(EMAIL_2);
         verify(userRepository).findUserById(ID);
@@ -232,7 +234,7 @@ class UserServiceImplTest {
 
         assertThrows(
                 EmailAlreadyExistsException.class,
-                () -> userService.updateUser(ID, userUpdateDto)
+                () -> userService.updateUser(userUpdateDto, ID)
         );
 
         verify(userRepository).findByEmail(EMAIL_2);
@@ -247,7 +249,7 @@ class UserServiceImplTest {
         when(userRepository.findUserById(ID))
                 .thenReturn(Optional.of(user));
 
-        userService.activateUser(ID);
+        userService.activateUser(ID.toString());
 
         assertTrue(user.getActive());
 
@@ -264,7 +266,7 @@ class UserServiceImplTest {
 
         assertThrows(
                 UserAlreadyActiveException.class,
-                () -> userService.activateUser(ID)
+                () -> userService.activateUser(ID.toString())
         );
 
         verify(userRepository).findUserById(ID);
@@ -278,7 +280,7 @@ class UserServiceImplTest {
         when(userRepository.findUserById(ID))
                 .thenReturn(Optional.of(user));
 
-        userService.deactivateUser(ID);
+        userService.deactivateUser(ID.toString());
 
         assertFalse(user.getActive());
 
@@ -295,7 +297,7 @@ class UserServiceImplTest {
 
         assertThrows(
                 UserAlreadyNonActiveException.class,
-                () -> userService.deactivateUser(ID)
+                () -> userService.deactivateUser(ID.toString())
         );
 
         verify(userRepository).findUserById(ID);

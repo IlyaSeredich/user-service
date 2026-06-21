@@ -1,5 +1,6 @@
 package com.innowise.userservice.service.impl;
 
+
 import com.innowise.userservice.dto.*;
 import com.innowise.userservice.entity.PaymentCard;
 import com.innowise.userservice.entity.User;
@@ -23,6 +24,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -51,7 +53,7 @@ class PaymentCardServiceImplTest {
 
     private static final Long CARD_ID = 1L;
     private static final Long CARD_ID_2 = 2L;
-    private static final Long USER_ID = 1L;
+    private static final UUID USER_ID = UUID.randomUUID();
     private static final String NUMBER = "1111 1111 1111 1111";
     private static final String NUMBER_2 = "2222 2222 2222 2222 ";
     private static final String HOLDER = "testName testSurname";
@@ -251,7 +253,8 @@ class PaymentCardServiceImplTest {
         when(paymentCardMapper.toDto(paymentCard))
                 .thenReturn(responseDto);
 
-        PaymentCardResponseDto result = paymentCardService.updatePaymentCard(CARD_ID, updateDto);
+        PaymentCardResponseDto result =
+                paymentCardService.updatePaymentCard(CARD_ID, USER_ID, updateDto);
 
         assertEquals(responseDto, result);
 
@@ -280,7 +283,7 @@ class PaymentCardServiceImplTest {
 
         assertThrows(
                 PaymentCardNumberAlreadyExistException.class,
-                () -> paymentCardService.updatePaymentCard(CARD_ID, updateDto)
+                () -> paymentCardService.updatePaymentCard(CARD_ID,USER_ID, updateDto)
         );
 
         verify(paymentCardRepository).findPaymentCardById(CARD_ID);
@@ -300,7 +303,7 @@ class PaymentCardServiceImplTest {
 
         assertThrows(
                 PaymentCardNotFoundException.class,
-                () -> paymentCardService.updatePaymentCard(CARD_ID, updateDto)
+                () -> paymentCardService.updatePaymentCard(CARD_ID, USER_ID,updateDto)
         );
 
         verify(paymentCardRepository).findPaymentCardById(CARD_ID);
@@ -313,7 +316,7 @@ class PaymentCardServiceImplTest {
         when(paymentCardRepository.findPaymentCardById(CARD_ID))
                 .thenReturn(Optional.of(paymentCard));
 
-        paymentCardService.activatePaymentCard(CARD_ID);
+        paymentCardService.activatePaymentCard(CARD_ID, USER_ID);
 
         assertTrue(paymentCard.getActive());
         verify(paymentCardRepository).save(paymentCard);
@@ -328,7 +331,7 @@ class PaymentCardServiceImplTest {
 
         assertThrows(
                 PaymentCardAlreadyActiveException.class,
-                () -> paymentCardService.activatePaymentCard(CARD_ID)
+                () -> paymentCardService.activatePaymentCard(CARD_ID, USER_ID)
         );
 
         verify(paymentCardRepository).findPaymentCardById(CARD_ID);
@@ -343,7 +346,7 @@ class PaymentCardServiceImplTest {
         when(paymentCardRepository.findPaymentCardById(CARD_ID))
                 .thenReturn(Optional.of(paymentCard));
 
-        paymentCardService.deactivatePaymentCard(CARD_ID);
+        paymentCardService.deactivatePaymentCard(CARD_ID, USER_ID);
 
         assertFalse(paymentCard.getActive());
 
@@ -358,7 +361,7 @@ class PaymentCardServiceImplTest {
 
         assertThrows(
                 PaymentCardAlreadyNonActiveException.class,
-                () -> paymentCardService.deactivatePaymentCard(CARD_ID)
+                () -> paymentCardService.deactivatePaymentCard(CARD_ID, USER_ID)
         );
 
         verify(paymentCardRepository).findPaymentCardById(CARD_ID);
