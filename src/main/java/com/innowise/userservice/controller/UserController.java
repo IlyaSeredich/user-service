@@ -3,6 +3,7 @@ package com.innowise.userservice.controller;
 import com.innowise.userservice.dto.*;
 import com.innowise.userservice.service.UserService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,24 @@ import java.util.UUID;
 @Validated
 public class UserController {
     private final UserService userService;
+
+    @GetMapping("/email")
+    public ResponseEntity<UserResponseDto> getUser(
+            @Validated @RequestParam("email") @Email String email,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        UserResponseDto userResponseDto = userService.getUser(jwt.getClaimAsString("email"));
+        return ResponseEntity.ok(userResponseDto);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserResponseDto> getUserById(
+            @PathVariable("id") UUID userId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        UserResponseDto userResponseDto = userService.getUser(userId);
+        return ResponseEntity.ok(userResponseDto);
+    }
 
     @PostMapping
     public ResponseEntity<UserResponseDto> createUser(

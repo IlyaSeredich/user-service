@@ -2,10 +2,7 @@ package com.innowise.userservice.service.impl;
 
 import com.innowise.userservice.dto.*;
 import com.innowise.userservice.entity.User;
-import com.innowise.userservice.exception.EmailAlreadyExistsException;
-import com.innowise.userservice.exception.UserAlreadyActiveException;
-import com.innowise.userservice.exception.UserAlreadyNonActiveException;
-import com.innowise.userservice.exception.UserNotFoundException;
+import com.innowise.userservice.exception.*;
 import com.innowise.userservice.mapper.UserMapper;
 import com.innowise.userservice.repository.UserRepository;
 import com.innowise.userservice.service.UserService;
@@ -19,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -89,8 +87,20 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public UserResponseDto getUser(String email) {
+        User userEntity = getUserEntity(email);
+        return userMapper.toDto(userEntity);
+    }
+
+    @Override
     public User getUserEntity(UUID id) {
-        return userRepository.findUserById(id).orElseThrow(() -> new UserNotFoundException(id));
+        return userRepository.findUserById(id).orElseThrow(()
+                -> new UserNotFoundException(id));
+    }
+
+    public User getUserEntity(String email) {
+        return userRepository.findUserByEmail(email).orElseThrow(()
+                -> new EmailNotFoundException(email));
     }
 
     private Pageable createPageable(PageRequestDto pageRequestDto) {

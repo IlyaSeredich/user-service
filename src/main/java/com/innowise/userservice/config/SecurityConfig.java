@@ -30,6 +30,8 @@ public class SecurityConfig {
                 .cors(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(requests ->
                         requests
+                                .requestMatchers(HttpMethod.GET, "/api/users/email")
+                                .hasAnyRole("user", "admin")
                                 .requestMatchers(HttpMethod.POST, "/api/users")
                                     .hasAnyRole("user", "admin")
                                 .requestMatchers(HttpMethod.GET, "/api/users/me")
@@ -38,6 +40,8 @@ public class SecurityConfig {
                                     .hasRole("admin")
                                 .requestMatchers(HttpMethod.PATCH, "/api/users")
                                     .hasAnyRole("user", "admin")
+                                .requestMatchers(HttpMethod.GET, "/api/users/{id}")
+                                .hasRole("admin")
                                 .requestMatchers(HttpMethod.PATCH, "/api/users/{id}/activate")
                                     .hasRole("admin")
                                 .requestMatchers(HttpMethod.PATCH, "/api/users/{id}/deactivate")

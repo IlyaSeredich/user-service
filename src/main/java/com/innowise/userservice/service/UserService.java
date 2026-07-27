@@ -13,4 +13,5 @@ public interface UserService {
     User getUserEntity(UUID id);
     void activateUser(String id);
     void deactivateUser(String id);
+    UserResponseDto getUser(String email);
 }
